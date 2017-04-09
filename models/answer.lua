@@ -16,10 +16,12 @@ end
 
 function build_answer_model()
 	local target = nn.Identity()() --(#batch, inputsz)
+    answer_modules['target'] = target.data.module
 	local target_embedding = nonlin()(nn.Linear(g_opts.inputsz, g_opts.answer_hidsz)(target))
 
-	local query =  nn.Identity()() --(#batch, ask_num_symbols)
-	local query_embedding = nonlin()(nn.Linear(g_opts.ask_num_symbols, g_opts.answer_hidsz)(query))
+	local comm_in =  nn.Identity()() --(#batch, ask_num_symbols)
+    answer_modules['comm_in'] = comm_in.data.module
+	local query_embedding = nonlin()(nn.Linear(g_opts.ask_num_symbols, g_opts.answer_hidsz)(comm_in))
 
 	local lstm_input = nn.CAddTable()({ target_embedding,  query_embedding })
 	local prev_hid = nn.Identity()() --(#batch, answer_hidsz)
@@ -31,10 +33,10 @@ function build_answer_model()
 
 	local hid_symbol = nonlin()(nn.Linear(g_opts.answer_hidsz, g_opts.answer_hidsz)(hidstate))
     local symbol = nn.Linear(g_opts.answer_hidsz, g_opts.answer_num_symbols)(hid_symbol)
-    local symbol_logprob = nn.LogSoftMax()(symbol)
+    local symbol_prob = nn.SoftMax()(symbol)
 
-    local model = nn.gModule({target, query, prev_hid, prev_cell}, 
-    						 {symbol_logprob, hidstate, cellstate})
+    local model = nn.gModule({target, comm_in, prev_hid, prev_cell}, 
+    						 {symbol_prob, hidstate, cellstate})
     return model
 
 end

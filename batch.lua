@@ -25,6 +25,15 @@ function batch_input(batch)
     return input
 end
 
+function batch_act(batch, action, active)
+    for i, g in pairs(batch) do
+        if active[i] == 1 then
+            g:act(action[i][1])
+        end
+    end
+end
+
+
 function batch_reward(batch, active)
     local reward = torch.Tensor(#batch):zero()
     for i, g in pairs(batch) do
@@ -33,4 +42,22 @@ function batch_reward(batch, active)
         end
     end
     return reward:view(-1)
+end
+
+function batch_success(batch)
+    local success = torch.Tensor(#batch):fill(0)
+    for i, g in pairs(batch) do
+        if g:is_success() then
+            success[i] = 1
+        end
+    end
+    return success
+end
+
+function batch_target_index(batch)
+    local target_index = torch.Tensor(#batch):fill(0)
+    for i, g in pairs(batch) do
+        target_index[i] = g.target_index
+    end
+    return target_index
 end

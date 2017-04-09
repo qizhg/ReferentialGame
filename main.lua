@@ -29,14 +29,14 @@ cmd:option('--src_width', 32, '')
 cmd:option('--nonlin', 'relu', 'relu | tanh | none')
 cmd:option('--inputsz', 16*5*5, '')
 cmd:option('--answer_hidsz', 64, '')
-cmd:option('--answer_num_symbols', 5, '')
-cmd:option('--ask_num_symbols', 5, '')
+cmd:option('--answer_num_symbols', 2, '')
+cmd:option('--ask_num_symbols', 3, '')
 cmd:option('--ask_hidsz', 64, '')
 
 -- training parameters
 ---------
 cmd:option('--epochs', 1, 'the number of training epochs')
-cmd:option('--nbatches', 10, 'the number of mini-batches in one epoch')
+cmd:option('--nbatches', 1, 'the number of mini-batches in one epoch')
 cmd:option('--batch_size',5, 'size of mini-batch (the number of parallel games) in each thread')
 ---- GAE
 cmd:option('--gamma', 0.99, 'size of mini-batch (the number of parallel games) in each thread')
@@ -72,5 +72,6 @@ cmd:option('--init_std', 0.1, '')
 
 g_opts = cmd:parse(arg or {})
 g_init_model()
+g_log = {}
 train(g_opts.epochs)
 

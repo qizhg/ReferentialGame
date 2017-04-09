@@ -63,11 +63,13 @@ function RefGame:gen_input()
 end
 
 function RefGame:act(action)
-	if self.finished ==true then return end
+	if self.finished == true then 
+		return 
+	end
 
 	if action >= 1 and action <= 1 + self.num_distractors then
 		self.finished = true
-		if action == target_index then 
+		if action == self.target_index then 
 			self.success = 1
 		else
 			self.success = -1

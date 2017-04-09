@@ -17,12 +17,14 @@ end
 function build_ask_model()
 
 	local referents = nn.Identity()() --(#batch, 1 + num_distractors, inputsz)
+    ask_modules['referents'] = referents.data.module
 	local referents_sz = (1 + g_opts.num_distractors) * g_opts.inputsz
 	local referents_flat = nn.View(referents_sz):setNumInputDims(2)(referents)
 	local referents_embedding = nonlin()(nn.Linear(referents_sz, g_opts.ask_hidsz)(referents_flat))
 
-	local answer =  nn.Identity()() --(#batch, answer_num_symbols)
-	local answer_embedding = nonlin()(nn.Linear(g_opts.answer_num_symbols, g_opts.ask_hidsz)(answer))
+	local comm_in =  nn.Identity()() --(#batch, answer_num_symbols)
+    ask_modules['comm_in'] = comm_in.data.module
+	local answer_embedding = nonlin()(nn.Linear(g_opts.answer_num_symbols, g_opts.ask_hidsz)(comm_in))
 
 	local lstm_input = nn.CAddTable()({ referents_embedding,  answer_embedding })
 	local prev_hid = nn.Identity()() --(#batch, ask_hidsz)
@@ -34,15 +36,19 @@ function build_ask_model()
 
 	local hid_symbol = nonlin()(nn.Linear(g_opts.ask_hidsz, g_opts.ask_hidsz)(hidstate))
     local symbol = nn.Linear(g_opts.ask_hidsz, g_opts.ask_num_symbols)(hid_symbol)
-    local symbol_logprob = nn.LogSoftMax()(symbol)
+    local symbol_prob = nn.SoftMax()(symbol)
 
     local hid_act = nonlin()(nn.Linear(g_opts.ask_hidsz, g_opts.ask_hidsz)(hidstate))
     local act = nn.Linear(g_opts.ask_hidsz, 1 + 1 + g_opts.num_distractors)(hid_act)
     local act_logprob = nn.LogSoftMax()(act)
 
-    local model = nn.gModule( {referents, answer, prev_hid, prev_cell},
-    						 {symbol_logprob, act_logprob, hidstate, cellstate})
+    local hid_bl = nonlin()(nn.Linear(g_opts.ask_hidsz, g_opts.ask_hidsz)(hidstate))
+    local baseline = nn.Linear(g_opts.ask_hidsz, 1)(hid_bl)
+
+
+
+    local model = nn.gModule( {referents, comm_in, prev_hid, prev_cell},
+    						 {symbol_prob, act_logprob, baseline, hidstate, cellstate})
     return model
 
 end
-
