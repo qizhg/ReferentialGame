@@ -1,7 +1,9 @@
 
 torch.setdefaulttensortype('torch.FloatTensor')
---paths.dofile('util.lua')
+paths.dofile('util.lua')
+paths.dofile('loader.lua')
 paths.dofile('models/model.lua')
+paths.dofile('game.lua')
 --paths.dofile('games/init.lua')
 
 require'gnuplot'
@@ -9,6 +11,19 @@ require'gnuplot'
 local cmd = torch.CmdLine()
 cmd:option('--num_distractors', 1, 'the number of distractors')
 cmd:option('--max_steps', 2, 'the number of distractors')
+
+cmd:option('--shape_range', 3, '')
+cmd:option('--color_range', 3, '')
+cmd:option('--size_range', 2, '')
+
+cmd:option('--cost_query', 0.05, '')
+cmd:option('--cost_correct', -1, '')
+cmd:option('--cost_wrong', 1, '')
+
+cmd:option('--nchannels', 3, '')
+cmd:option('--src_height', 32, '')
+cmd:option('--src_width', 32, '')
+
 
 
 cmd:option('--nonlin', 'relu', 'relu | tanh | none')
@@ -25,3 +40,6 @@ cmd:option('--init_std', 0.1, '')
 
 g_opts = cmd:parse(arg or {})
 g_init_model()
+g = RefGame(g_opts)
+x = g:gen_input()
+

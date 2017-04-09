@@ -3,7 +3,8 @@ from PIL import Image as NewImage
 
 
 def draw_item(shape, color, size):
-	win = GraphWin('Draw an Item', 32, 32)
+	win_sz = 42 
+	win = GraphWin('Draw an Item', win_sz, win_sz)
 	win.setBackground('white')
 	#shape:   0: cross, 1:squar e, 2:triagnle
 	#color:   0: red,    1: green, 3: blue
@@ -16,7 +17,7 @@ def draw_item(shape, color, size):
 			p1_x = 2
 		#else:
 
-		width = 32-p1_x-p1_x
+		width = win_sz-p1_x-p1_x
 		p1 = Point(p1_x,p1_x)
 		p2 = Point(p1_x + width,p1_x)
 		p3 = Point(p1_x + width,p1_x + width)
@@ -43,7 +44,7 @@ def draw_item(shape, color, size):
 			p1_x = 2
 		#else:
 
-		width = 32-p1_x-p1_x
+		width = win_sz-p1_x-p1_x
 		p = Point(p1_x,p1_x)
 		pp = Point(p1_x + width,p1_x + width)
 		item = Rectangle(p, pp)	
@@ -64,7 +65,7 @@ def draw_item(shape, color, size):
 			p1_x = 2
 		#else:
 
-		width = 32-p1_x-p1_x
+		width = win_sz-p1_x-p1_x
 		p1 = Point(p1_x + width/2, p1_x)
 		p2 = Point(p1_x + width,p1_x + width)
 		p3 = Point(p1_x, p1_x + width)
@@ -80,7 +81,7 @@ def draw_item(shape, color, size):
 		item.draw(win)
 	
 
-	filename = ""+ str(shape)+str(color)+str(size)
+	filename = ""+ str(shape+1)+str(color+1)+str(size+1)
 	win.postscript(file=filename+".eps", colormode='color')
 	img = NewImage.open(filename+".eps")
 	img.save(filename+".png", "png")
@@ -95,4 +96,5 @@ def main():
 				draw_item(shape, color, size)
 
 
-draw_item(1, 0, 0)
+#draw_item(0, 2, 0)
+main()
