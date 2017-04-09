@@ -40,7 +40,7 @@ function RefGame:__init(opts)
 
 
     --finish & success
-    self.finish = false
+    self.finished = false
     self.success = 0 --0: not finised, 1: success, -1 unsecueess
 
     --cost
@@ -63,8 +63,10 @@ function RefGame:gen_input()
 end
 
 function RefGame:act(action)
+	if self.finished ==true then return end
+
 	if action >= 1 and action <= 1 + self.num_distractors then
-		self.finish = true
+		self.finished = true
 		if action == target_index then 
 			self.success = 1
 		else
@@ -91,6 +93,14 @@ function RefGame:is_finish()
         return true
     else
         return false
+    end
+end
+
+function RefGame:is_active()
+    if self.finished == true then
+        return false
+    else
+        return true
     end
 end
 

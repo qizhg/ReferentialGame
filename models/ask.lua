@@ -40,7 +40,7 @@ function build_ask_model()
     local act = nn.Linear(g_opts.ask_hidsz, 1 + 1 + g_opts.num_distractors)(hid_act)
     local act_logprob = nn.LogSoftMax()(act)
 
-    local model = nn.gModule( {referents, answer, prev_hid, prev_cell}, 
+    local model = nn.gModule( {referents, answer, prev_hid, prev_cell},
     						 {symbol_logprob, act_logprob, hidstate, cellstate})
     return model
 
