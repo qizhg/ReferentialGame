@@ -5,7 +5,7 @@ from PIL import Image as NewImage
 def draw_item(shape, color, size):
 	win = GraphWin('Draw an Item', 32, 32)
 	win.setBackground('white')
-	#shape:   0: cross, 1: square, 2:triagnle
+	#shape:   0: cross, 1:squar e, 2:triagnle
 	#color:   0: red,    1: green, 3: blue
 	#size:    0: small,  1:large
 	
