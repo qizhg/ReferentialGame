@@ -48,7 +48,11 @@ function train_batch(task_id)
     
 
 	--forward pass
+    --print('---------------batch---------------')
+    --print('target index')
+    --print(#batch_target_index(batch))
     for t = 1, g_opts.max_steps do
+        --print('-------t='..t..'----------')
         active[t] = batch_active(batch)
 
     	--ask
@@ -66,6 +70,8 @@ function train_batch(task_id)
     	----  ask_out = {comm_out, act_logprob, baseline, hidstate, cellstate}
         ask.comm_out[t] = ask_out[1]:clone()
         action[t] = sample_multinomial(torch.exp(ask_out[2]))  --(#batch, 1)
+        --print('action')
+        --print(action[t])
         ask.baseline[t] = ask_out[3]:clone():cmul(active[t])
     	ask.hid[t] = ask_out[4]:clone()
         ask.cell[t] = ask_out[5]:clone()
@@ -92,6 +98,10 @@ function train_batch(task_id)
 
         batch_act(batch, action[t], active[t])
         reward[t] = batch_reward(batch, active[t])
+        --print('reward')
+        --print(reward[t]:view(-1,1))
+
+        --io.read()
 
     end
     local success = batch_success(batch)
@@ -159,12 +169,12 @@ function train_batch(task_id)
         ----  ask_out = {comm_out, act_logprob, baseline, hidstate, cellstate}
 
         ----grad_comm_out
-        ask.grad_comm_out = answer.grad_comm_in:cmul(comm_mask[t]:expandAs(answer.grad_comm_in)):div(#batch)
+        ask.grad_comm_out = answer.grad_comm_in:cmul(comm_mask[t]:expandAs(answer.grad_comm_in)) --:div(#batch)
 
         ----grad_bl
         local R = reward_sum:clone() --(#batch, )
         R:cmul(active[t]) --(#batch, )
-        ask.grad_baseline = bl_loss:backward(ask.baseline[t], R):mul(g_opts.alpha):div(#batch)
+        ask.grad_baseline = bl_loss:backward(ask.baseline[t], R):mul(g_opts.alpha) --:div(#batch)
 
         ----grad_action
         ask.grad_action = torch.Tensor(#batch, 2 + g_opts.num_distractors):zero()
@@ -177,9 +187,21 @@ function train_batch(task_id)
         entropy_grad:cmul(torch.exp(logp))
         entropy_grad:mul(beta)
         entropy_grad:cmul(active[t]:view(-1,1):expandAs(entropy_grad):clone())
-        ask.grad_action:add(entropy_grad)
-        ask.grad_action:div(#batch)
+        ask.grad_action:add(entropy_grad) --:div(#batch)
+        if g_opts.SL == true then
+            ask.grad_action:zero()
+            local NLLceriterion = nn.ClassNLLCriterion()
+            local action_label = torch.LongTensor(#batch)
+            if t<g_opts.max_steps then
+                action_label:fill(2+g_opts.num_distractors)
+            else
+                action_label = batch_target_index(batch):clone()
+            end
+            local err = NLLceriterion:forward(ask_out[2],action_label)
+            ask.grad_action = NLLceriterion:backward(ask_out[2],action_label)
+            
 
+        end
        
 
         ask_model:backward( ask_input_table,
@@ -210,7 +232,8 @@ end
 
 function train(N)
     for n = 1, N do
-        epoch_num= n 
+        epoch_num= n
+        local x = ask_paramx:clone()
         local stat = {} --for the epoch
 		for k = 1, g_opts.nbatches do
             batch_num = k
@@ -222,6 +245,9 @@ function train(N)
         g_update_param(preproc_paramx, preproc_paramdx, 'preproc')
         g_update_param(answer_paramx, answer_paramdx, 'answer')
         g_update_param(ask_paramx, ask_paramdx, 'ask' )
+
+        local xx = ask_paramx:clone()
+        print((x-xx):norm())
 
         for k, v in pairs(stat) do
             if string.sub(k, 1, 5) == 'count' then

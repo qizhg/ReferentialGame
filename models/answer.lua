@@ -21,15 +21,16 @@ function build_answer_model()
 
 	local comm_in =  nn.Identity()() --(#batch, ask_num_symbols)
     answer_modules['comm_in'] = comm_in.data.module
-	local query_embedding = nonlin()(nn.Linear(g_opts.ask_num_symbols, g_opts.answer_hidsz)(comm_in))
+	local comm_in_embedding = nonlin()(nn.Linear(g_opts.ask_num_symbols, g_opts.answer_hidsz)(comm_in))
 
-	local lstm_input = nn.CAddTable()({ target_embedding,  query_embedding })
-	local prev_hid = nn.Identity()() --(#batch, answer_hidsz)
+	local embedding = nn.CAddTable()({ target_embedding,  comm_in_embedding })
+	
+
+    local prev_hid = nn.Identity()() --(#batch, answer_hidsz)
     answer_modules['prev_hid'] = prev_hid.data.module
     local prev_cell = nn.Identity()() --(#batch, answer_hidsz)
     answer_modules['prev_cell'] = prev_cell.data.module
-
-	local hidstate, cellstate = build_lstm(lstm_input, prev_hid, prev_cell, g_opts.answer_hidsz, g_opts.answer_hidsz)
+	local hidstate, cellstate = build_lstm(embedding, prev_hid, prev_cell, g_opts.answer_hidsz, g_opts.answer_hidsz)
 
 	local comm_out, Gumbel_noise
     local hid_symbol = nonlin()(nn.Linear(g_opts.answer_hidsz, g_opts.answer_hidsz)(hidstate))
@@ -58,7 +59,7 @@ function build_answer_model()
     output_table[3] = cellstate
 
 
-    local model = nn.gModule( input_table, output_table)
+    local model = nn.gModule(input_table, output_table)
     return model
 
 end
