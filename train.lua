@@ -59,12 +59,12 @@ function train_batch(task_id)
         ask.comm_in[t] = answer.comm_out[t-1]:cmul(comm_mask[t-1]:expandAs(answer.comm_out[t-1]))
     	local ask_input_table = {}
         ask_input_table[1] = ask.referents
-        ask_input_table[2] = ask.comm_in[t]
-        ask_input_table[3] = ask.hid[t-1]
-        ask_input_table[4] = ask.cell[t-1]
+        ask_input_table[#ask_input_table+1] = ask.comm_in[t]
+        ask_input_table[#ask_input_table+1] = ask.hid[t-1]
+        ask_input_table[#ask_input_table+1] = ask.cell[t-1]
         if g_opts.comm == 'Gumbel' then
             ask.Gumbel_noise[t] = torch.rand(#batch, g_opts.ask_num_symbols):log():neg():log():neg()
-            ask_input_table[5]  = ask.Gumbel_noise[t] 
+            ask_input_table[#ask_input_table+1]  = ask.Gumbel_noise[t] 
         end
         local ask_out = ask_model:forward( ask_input_table )
     	----  ask_out = {comm_out, act_logprob, baseline, hidstate, cellstate}
@@ -83,12 +83,12 @@ function train_batch(task_id)
         answer.comm_in[t] = ask.comm_out[t]:cmul(comm_mask[t]:expandAs(ask.comm_out[t]))
         local answer_input_table = {}
         answer_input_table[1] = answer.target
-        answer_input_table[2] = answer.comm_in[t]
-        answer_input_table[3] = answer.hid[t-1]
-        answer_input_table[4] = answer.cell[t-1]
+        answer_input_table[#answer_input_table+1] = answer.comm_in[t]
+        answer_input_table[#answer_input_table+1] = answer.hid[t-1]
+        answer_input_table[#answer_input_table+1] = answer.cell[t-1]
         if g_opts.comm == 'Gumbel' then
             answer.Gumbel_noise[t] = torch.rand(#batch, g_opts.answer_num_symbols):log():neg():log():neg()
-            answer_input_table[5]  = answer.Gumbel_noise[t] 
+            answer_input_table[#answer_input_table+1]  = answer.Gumbel_noise[t] 
         end
         local answer_out = answer_model:forward(answer_input_table)
         ----  answer_out =  {comm_out, hidstate, cellstate}
@@ -139,11 +139,11 @@ function train_batch(task_id)
         --answer
         local answer_input_table = {}
         answer_input_table[1] = answer.target
-        answer_input_table[2] = answer.comm_in[t]
-        answer_input_table[3] = answer.hid[t-1]
-        answer_input_table[4] = answer.cell[t-1]
+        answer_input_table[#answer_input_table+1] = answer.comm_in[t]
+        answer_input_table[#answer_input_table+1] = answer.hid[t-1]
+        answer_input_table[#answer_input_table+1] = answer.cell[t-1]
         if g_opts.comm == 'Gumbel' then
-            answer_input_table[5]  = answer.Gumbel_noise[t] 
+            answer_input_table[#answer_input_table+1]  = answer.Gumbel_noise[t] 
         end
         local answer_out =  answer_model:forward(answer_input_table)
         answer_model:backward(answer_input_table, 
@@ -159,11 +159,11 @@ function train_batch(task_id)
         ----forward
         local ask_input_table = {}
         ask_input_table[1] = ask.referents
-        ask_input_table[2] = ask.comm_in[t]
-        ask_input_table[3] = ask.hid[t-1]
-        ask_input_table[4] = ask.cell[t-1]
+        ask_input_table[#ask_input_table+1] = ask.comm_in[t]
+        ask_input_table[#ask_input_table+1] = ask.hid[t-1]
+        ask_input_table[#ask_input_table+1] = ask.cell[t-1]
         if g_opts.comm == 'Gumbel' then
-            ask_input_table[5]  = ask.Gumbel_noise[t] 
+            ask_input_table[#ask_input_table+1]  = ask.Gumbel_noise[t] 
         end
         local ask_out = ask_model:forward( ask_input_table )
         ----  ask_out = {comm_out, act_logprob, baseline, hidstate, cellstate}

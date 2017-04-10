@@ -46,11 +46,11 @@ function build_answer_model()
     
     local input_table = {}
     input_table[1] = target
-    input_table[2] = comm_in
-    input_table[3] = prev_hid
-    input_table[4] = prev_cell
+    input_table[#input_table+1] = comm_in
+    input_table[#input_table+1] = prev_hid
+    input_table[#input_table+1] = prev_cell
     if g_opts.comm == 'Gumbel' then
-        input_table[5] = Gumbel_noise
+        input_table[#input_table+1] = Gumbel_noise
     end
 
     local output_table = {}
