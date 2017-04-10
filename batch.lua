@@ -16,11 +16,31 @@ function batch_active(batch)
     return active:view(-1)
 end
 
+
+
 function batch_input(batch)
+    local input
+    if g_opts.representation == 'image' then
+        input = batch_input_image(batch)
+    elseif g_opts.representation == 'code' then
+        input = batch_input_code(batch)
+    end
+    return input
+
+end
+function batch_input_image(batch)
     local input = torch.Tensor(#batch, 2+g_opts.num_distractors,g_opts.nchannels,g_opts.src_height, g_opts.src_width)
     input:zero()
     for i, g in pairs(batch) do
-        input[i] = g:gen_input()
+        input[i] = g:gen_input_image()
+    end
+    return input
+end
+function batch_input_code(batch)
+    local input = torch.Tensor(#batch, 2+g_opts.num_distractors, g_opts.num_attr)
+    input:zero()
+    for i, g in pairs(batch) do
+        input[i] = g:gen_input_code()
     end
     return input
 end

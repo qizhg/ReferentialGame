@@ -8,8 +8,8 @@ function train_batch(task_id)
 	local batch = batch_init(g_opts.batch_size)
 	
 	--referents
-	local img_src = batch_input(batch) 
-	local preproc_out = preproc_model:forward(img_src)
+	local ref_input = batch_input(batch) 
+	local preproc_out = preproc_model:forward(ref_input)
     ----  preproc_out = {referents, target}	
 
 	--forward cache
@@ -192,8 +192,8 @@ function train_batch(task_id)
         answer.grad_comm_out = ask.grad_comm_in:cmul(comm_mask[t-1]:expandAs(ask.grad_comm_in))
 
         --preporc
-        preproc_model:forward(img_src)
-        preproc_model:backward(img_src, {ask.grad_referents,answer.grad_target})
+        preproc_model:forward(ref_input)
+        preproc_model:backward(ref_input, {ask.grad_referents,answer.grad_target})
 
 
     end

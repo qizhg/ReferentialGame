@@ -15,6 +15,7 @@ local cmd = torch.CmdLine()
 cmd:option('--num_distractors', 1, 'the number of distractors')
 cmd:option('--max_steps', 2, 'the number of distractors')
 
+cmd:option('--num_attr', 3, '')
 cmd:option('--shape_range', 3, '')
 cmd:option('--color_range', 3, '')
 cmd:option('--size_range', 2, '')
@@ -28,11 +29,14 @@ cmd:option('--src_height', 32, '')
 cmd:option('--src_width', 32, '')
 
 cmd:option('--nonlin', 'relu', 'relu | tanh | none')
-cmd:option('--inputsz', 16*5*5, '')
-cmd:option('--answer_hidsz', 64, '')
+cmd:option('--answer_hidsz', 32, '')
 cmd:option('--answer_num_symbols', 2, '')
 cmd:option('--ask_num_symbols', 3, '')
-cmd:option('--ask_hidsz', 64, '')
+cmd:option('--ask_hidsz', 32, '')
+
+--input representation
+cmd:option('--representation', 'code', 'code|image')
+
 
 --comm
 cmd:option('--comm', 'continuous', 'continuous|Gumbel|     communication mode')
@@ -72,11 +76,22 @@ cmd:option('--adam_eps', 1e-8, 'parameter of Adam')
 cmd:option('--save', '', 'file name to save the model')
 cmd:option('--load', 'nonlstm_speaker_at80', 'file name to load the model')
 
-
 cmd:option('--init_std', 0.1, '')
 
 g_opts = cmd:parse(arg or {})
+if g_opts.representation == 'image' then 
+	g_opts.inputsz = 16*5*5 --after LeNet
+else
+	g_opts.inputsz = 3 --num attributes
+end
+
+
 g_init_model()
 g_log = {}
 train(g_opts.epochs)
+
+
+--g = RefGame(g_opts)
+--x = g:gen_input_code()
+--print(x)
 

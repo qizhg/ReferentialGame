@@ -50,7 +50,7 @@ function RefGame:__init(opts)
     self.costs.wrong = opts.cost_wrong
 end
 
-function RefGame:gen_input()
+function RefGame:gen_input_image()
 	--[....target...; target]
 	local input = torch.Tensor(2+self.num_distractors,g_opts.nchannels,g_opts.src_height, g_opts.src_width)
 	for i = 1, 1+self.num_distractors do
@@ -59,6 +59,21 @@ function RefGame:gen_input()
 	end
 	local target_name = ''..self.referents[self.target_index].shape..self.referents[self.target_index].color..self.referents[self.target_index].size
 	input[2+self.num_distractors] = referents_src[target_name]:clone()
+	return input
+end
+
+function RefGame:gen_input_code()
+	--[....target...; target]
+	local input = torch.Tensor(2+self.num_distractors, #self.attr)
+	for i = 1, 1+self.num_distractors do
+		for attr_id = 1, #self.attr do 
+			input[i][attr_id] = self.referents[i][self.attr[attr_id]]
+		end
+	end
+
+	for attr_id = 1, #self.attr do 
+		input[2+self.num_distractors][attr_id] = self.referents[self.target_index][self.attr[attr_id]]
+	end
 	return input
 end
 
