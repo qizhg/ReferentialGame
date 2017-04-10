@@ -7,11 +7,9 @@ function train_batch(task_id)
 	local batch = batch_init(g_opts.batch_size)
 	
 	--referents
-	local referents_src = batch_input(batch) --(#batch, 2+num_distractors, nchannels, height, width)
-	local referents_src_4D = referents_src:view(-1,g_opts.nchannels,g_opts.src_height, g_opts.src_width):clone()
-	local referents = preproc_model:forward(referents_src_4D)
-    local referents_3D = referents:view(#batch, 2+g_opts.num_distractors,-1)
-	
+	local img_src = batch_input(batch) 
+	local preproc_out = preproc_model:forward(img_src)
+    ----  preproc_out = {referents, target}	
 
 	--forward cache
     active = {}
@@ -23,7 +21,7 @@ function train_batch(task_id)
     ----ask
 	local ask = {}
     local ask_hidsz = g_opts.ask_hidsz
-    ask.referents = referents_3D:narrow(2,1,1+g_opts.num_distractors):clone()
+    ask.referents = preproc_out[1]:clone()
     ask.comm_in = {}
     ask.comm_out={}
     ask.hid = {} 
@@ -35,7 +33,7 @@ function train_batch(task_id)
     ----answer
     local answer = {}
     local answer_hidsz = g_opts.answer_hidsz
-    answer.target = referents_3D:narrow(2,2+g_opts.num_distractors,1):squeeze():clone()
+    answer.target = preproc_out[2]:clone()
     answer.comm_in = {}
     answer.comm_out={}
     answer.comm_out[0] = torch.Tensor(#batch, g_opts.answer_num_symbols):fill(0)
@@ -138,8 +136,8 @@ function train_batch(task_id)
         answer.grad_comm_out = ask.grad_comm_in:cmul(comm_mask[t-1]:expandAs(ask.grad_comm_in))
 
         --preporc
-        local referents = preproc_model:forward(referents_src_4D)
-        preproc_model:backward(referents_src_4D, )
+        preproc_model:forward(img_src)
+        preproc_model:backward(img_src, {ask.grad_referents,answer.grad_target})
 
 
     end
@@ -162,6 +160,10 @@ function train(N)
             merge_stat(stat, s)
 		end
 
+        g_update_param(preproc_paramx, preproc_paramdx, 'preproc')
+        g_update_param(answer_paramx, answer_paramdx, 'answer')
+        g_update_param(ask_paramx, ask_paramdx, 'ask' )
+
         for k, v in pairs(stat) do
             if string.sub(k, 1, 5) == 'count' then
                 local s = string.sub(k, 6)
@@ -173,6 +175,36 @@ function train(N)
         stat.epoch = #g_log + 1
         print(format_stat(stat))
         table.insert(g_log, stat)
+    end
+
+end
+
+function g_update_param(x, dx, model_name)
+    local f = function(x0) return x, dx end
+    if not g_optim_state then
+        g_optim_state = {}
+        for i = 1, #model_id2name do
+            g_optim_state[i] = {} 
+        end
+    end
+    local model_id = model_name2id[model_name]
+    local config = {learningRate = g_opts.lrate}
+    if g_opts.optim == 'sgd' then
+        config.momentum = g_opts.momentum
+        config.weightDecay = g_opts.wdecay
+        optim.sgd(f, x, config, g_optim_state[model_id])
+    elseif g_opts.optim == 'rmsprop' then
+        config.alpha = g_opts.rmsprop_alpha
+        config.epsilon = g_opts.rmsprob_eps
+        config.weightDecay = g_opts.wdecay
+        optim.rmsprop(f, x, config, g_optim_state[model_id])
+    elseif g_opts.optim == 'adam' then
+        config.beta1 = g_opts.adam_beta1
+        config.beta2 = g_opts.adam_beta2
+        config.epsilon = g_opts.adam_eps
+        optim.adam(f, x, config, g_optim_state[model_id])
+    else
+        error('wrong optim')
     end
 
 end

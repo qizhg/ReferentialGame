@@ -13,8 +13,8 @@ local function nonlin()
     end
 end
 
-function build_LeNet_model()
-    local input = nn.Identity()() --a batch of images, 3 channels(RGB) x 32 x 32
+function LeNet(input)
+    --local input = nn.Identity()() --a batch of images, 3 channels(RGB) x 32 x 32
     
     local conv1 = nn.SpatialConvolution(3, 6, 5, 5)(input)
     local pool1 = nn.SpatialMaxPooling(2, 2, 2, 2)(conv1)
@@ -27,6 +27,5 @@ function build_LeNet_model()
     local flat_view = nn.View(16*5*5):setNumInputDims(3)(non2)
     --local embedding = nonlin()(nn.Linear(16*5*5, 120)(flat_view))
 
-    local model = nn.gModule({input}, {flat_view})
-    return model
+    return flat_view
 end
