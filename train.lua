@@ -4,6 +4,7 @@ require('nngraph')
 
 
 function train_batch(task_id)
+    local num_batchs = (epoch_num-1)*g_opts.nbatches + batch_num
 	local batch = batch_init(g_opts.batch_size)
 	
 	--referents
@@ -29,6 +30,7 @@ function train_batch(task_id)
     ask.hid[0] = torch.Tensor(#batch, ask_hidsz):fill(0)
     ask.cell[0] = torch.Tensor(#batch, ask_hidsz):fill(0)
     ask.baseline = {}
+    ask.Gumbel_noise = {}
 
     ----answer
     local answer = {}
@@ -41,6 +43,7 @@ function train_batch(task_id)
     answer.cell = {}
     answer.hid[0] = torch.Tensor(#batch, answer_hidsz):fill(0)
     answer.cell[0] = torch.Tensor(#batch, answer_hidsz):fill(0)
+    answer.Gumbel_noise = {}
 
     
 
@@ -50,20 +53,39 @@ function train_batch(task_id)
 
     	--ask
         ask.comm_in[t] = answer.comm_out[t-1]:cmul(comm_mask[t-1]:expandAs(answer.comm_out[t-1]))
-    	local ask_out = ask_model:forward( {ask.referents, ask.comm_in[t],ask.hid[t-1],ask.cell[t-1]} )
-    	----  ask_out = {symbol_prob, act_logprob, baseline, hidstate, cellstate}
+    	local ask_input_table = {}
+        ask_input_table[1] = ask.referents
+        ask_input_table[2] = ask.comm_in[t]
+        ask_input_table[3] = ask.hid[t-1]
+        ask_input_table[4] = ask.cell[t-1]
+        if g_opts.comm == 'Gumbel' then
+            ask.Gumbel_noise[t] = torch.rand(#batch, g_opts.ask_num_symbols):log():neg():log():neg()
+            ask_input_table[5]  = ask.Gumbel_noise[t] 
+        end
+        local ask_out = ask_model:forward( ask_input_table )
+    	----  ask_out = {comm_out, act_logprob, baseline, hidstate, cellstate}
         ask.comm_out[t] = ask_out[1]:clone()
         action[t] = sample_multinomial(torch.exp(ask_out[2]))  --(#batch, 1)
         ask.baseline[t] = ask_out[3]:clone():cmul(active[t])
     	ask.hid[t] = ask_out[4]:clone()
         ask.cell[t] = ask_out[5]:clone()
 
-        --comm
+        --comm_mask
         comm_mask[t] = action[t]:eq(2 + g_opts.num_distractors):float():clone()
+
         --answer
         answer.comm_in[t] = ask.comm_out[t]:cmul(comm_mask[t]:expandAs(ask.comm_out[t]))
-        local answer_out = answer_model:forward({answer.target, answer.comm_in[t], answer.hid[t-1],answer.cell[t-1]} )
-        ----  answer_out =  symbol_prob, hidstate, cellstate}
+        local answer_input_table = {}
+        answer_input_table[1] = answer.target
+        answer_input_table[2] = answer.comm_in[t]
+        answer_input_table[3] = answer.hid[t-1]
+        answer_input_table[4] = answer.cell[t-1]
+        if g_opts.comm == 'Gumbel' then
+            answer.Gumbel_noise[t] = torch.rand(#batch, g_opts.answer_num_symbols):log():neg():log():neg()
+            answer_input_table[5]  = answer.Gumbel_noise[t] 
+        end
+        local answer_out = answer_model:forward(answer_input_table)
+        ----  answer_out =  {comm_out, hidstate, cellstate}
         answer.comm_out[t] = answer_out[1]:clone()
         answer.hid[t] = answer_out[2]:clone()
         answer.cell[t] = answer_out[3]:clone()
@@ -105,8 +127,16 @@ function train_batch(task_id)
         reward_sum:add(reward[t])
 
         --answer
-        local answer_out = answer_model:forward({answer.target, answer.comm_in[t], answer.hid[t-1],answer.cell[t-1]} )
-        answer_model:backward({answer.target, answer.comm_in[t], answer.hid[t-1],answer.cell[t-1]}, 
+        local answer_input_table = {}
+        answer_input_table[1] = answer.target
+        answer_input_table[2] = answer.comm_in[t]
+        answer_input_table[3] = answer.hid[t-1]
+        answer_input_table[4] = answer.cell[t-1]
+        if g_opts.comm == 'Gumbel' then
+            answer_input_table[5]  = answer.Gumbel_noise[t] 
+        end
+        local answer_out =  answer_model:forward(answer_input_table)
+        answer_model:backward(answer_input_table, 
                             {answer.grad_comm_out, answer.grad_hid, answer.grad_cell})
         answer.grad_target = answer_modules['target'].gradInput:clone() --(#batch, inputsz)
         answer.grad_hid = answer_modules['prev_hid'].gradInput:clone()
@@ -116,17 +146,43 @@ function train_batch(task_id)
         --comm
 
         --ask
-        ask.grad_comm_out = answer.grad_comm_in:cmul(comm_mask[t]:expandAs(answer.grad_comm_in))
+        ----forward
+        local ask_input_table = {}
+        ask_input_table[1] = ask.referents
+        ask_input_table[2] = ask.comm_in[t]
+        ask_input_table[3] = ask.hid[t-1]
+        ask_input_table[4] = ask.cell[t-1]
+        if g_opts.comm == 'Gumbel' then
+            ask_input_table[5]  = ask.Gumbel_noise[t] 
+        end
+        local ask_out = ask_model:forward( ask_input_table )
+        ----  ask_out = {comm_out, act_logprob, baseline, hidstate, cellstate}
 
+        ----grad_comm_out
+        ask.grad_comm_out = answer.grad_comm_in:cmul(comm_mask[t]:expandAs(answer.grad_comm_in)):div(#batch)
+
+        ----grad_bl
         local R = reward_sum:clone() --(#batch, )
         R:cmul(active[t]) --(#batch, )
         ask.grad_baseline = bl_loss:backward(ask.baseline[t], R):mul(g_opts.alpha):div(#batch)
 
+        ----grad_action
         ask.grad_action = torch.Tensor(#batch, 2 + g_opts.num_distractors):zero()
         ask.grad_action:scatter(2, action[t], A_GAE[t]:view(-1,1):neg())
+        -------entropy
+        local beta = g_opts.beta_start - num_batchs*g_opts.beta_start/g_opts.beta_end_batch
+        beta = math.max(0,beta)
+        local logp = ask_out[2]
+        local entropy_grad = logp:clone():add(1)
+        entropy_grad:cmul(torch.exp(logp))
+        entropy_grad:mul(beta)
+        entropy_grad:cmul(active[t]:view(-1,1):expandAs(entropy_grad):clone())
+        ask.grad_action:add(entropy_grad)
+        ask.grad_action:div(#batch)
 
-        local ask_out = ask_model:forward({ask.referents, ask.comm_in[t],ask.hid[t-1],ask.cell[t-1]})
-        ask_model:backward( {ask.referents, ask.comm_in[t],ask.hid[t-1],ask.cell[t-1]},
+       
+
+        ask_model:backward( ask_input_table,
                             {ask.grad_comm_out, ask.grad_action, ask.grad_baseline, ask.grad_hid, ask.grad_cell})
         ask.grad_referents = ask_modules['referents'].gradInput:clone() --(#batch, 1 + num_distractors, inputsz)
         ask.grad_hid = ask_modules['prev_hid'].gradInput:clone()
@@ -154,8 +210,11 @@ end
 
 function train(N)
     for n = 1, N do
+        epoch_num= n 
         local stat = {} --for the epoch
 		for k = 1, g_opts.nbatches do
+            batch_num = k
+            xlua.progress(k, g_opts.nbatches)
 			local s = train_batch()
             merge_stat(stat, s)
 		end

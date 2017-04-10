@@ -1,4 +1,5 @@
 
+require('xlua')
 torch.setdefaulttensortype('torch.FloatTensor')
 paths.dofile('util.lua')
 paths.dofile('loader.lua')
@@ -33,23 +34,27 @@ cmd:option('--answer_num_symbols', 2, '')
 cmd:option('--ask_num_symbols', 3, '')
 cmd:option('--ask_hidsz', 64, '')
 
+--comm
+cmd:option('--comm', 'continuous', 'continuous|Gumbel|     communication mode')
+cmd:option('--Gumbel_temp', 1.0, 'fixed Gumbel_temp')
+
 -- training parameters
 ---------
-cmd:option('--epochs', 1, 'the number of training epochs')
-cmd:option('--nbatches', 1, 'the number of mini-batches in one epoch')
-cmd:option('--batch_size',5, 'size of mini-batch (the number of parallel games) in each thread')
+cmd:option('--epochs', 10, 'the number of training epochs')
+cmd:option('--nbatches', 10, 'the number of mini-batches in one epoch')
+cmd:option('--batch_size', 32, 'size of mini-batch (the number of parallel games) in each thread')
 ---- GAE
 cmd:option('--gamma', 0.99, 'size of mini-batch (the number of parallel games) in each thread')
 cmd:option('--lambda', 0.96, 'size of mini-batch (the number of parallel games) in each thread')
 ---- lr
-cmd:option('--lrate', 2.5e-4, 'learning rate')
----- Gumbel
-cmd:option('--Gumbel_temp', 1.0, 'fixed Gumbel_temp')
+cmd:option('--lrate', 1e-3, 'learning rate')
+
 ---- baseline mixing
 cmd:option('--alpha', 0.03, 'coefficient of baseline term in the cost function')
 ---- entropy mixing
-cmd:option('--beta_start', 0.02, 'coefficient of listener entropy mixing')
+cmd:option('--beta_start', 0, 'coefficient of listener entropy mixing')
 cmd:option('--beta_end_batch', 100*50, '')
+
 ---- clipping
 cmd:option('--reward_mult', 1, 'coeff to multiply reward for bprop')
 cmd:option('--max_grad_norm', 0, 'gradient clip value')

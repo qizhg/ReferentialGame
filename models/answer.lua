@@ -31,12 +31,34 @@ function build_answer_model()
 
 	local hidstate, cellstate = build_lstm(lstm_input, prev_hid, prev_cell, g_opts.answer_hidsz, g_opts.answer_hidsz)
 
-	local hid_symbol = nonlin()(nn.Linear(g_opts.answer_hidsz, g_opts.answer_hidsz)(hidstate))
+	local comm_out, Gumbel_noise
+    local hid_symbol = nonlin()(nn.Linear(g_opts.answer_hidsz, g_opts.answer_hidsz)(hidstate))
     local symbol = nn.Linear(g_opts.answer_hidsz, g_opts.answer_num_symbols)(hid_symbol)
-    local symbol_prob = nn.SoftMax()(symbol)
+    if g_opts.comm == 'continuous' then 
+        comm_out = nn.SoftMax()(symbol)
+    elseif g_opts.comm == 'Gumbel' then
+        Gumbel_noise = nn.Identity()()
+        local logp = nn.LogSoftMax()(symbol)
+        comm_out = build_Gumbel(Gumbel_noise, logp)
+    end
 
-    local model = nn.gModule({target, comm_in, prev_hid, prev_cell}, 
-    						 {symbol_prob, hidstate, cellstate})
+    
+    local input_table = {}
+    input_table[1] = target
+    input_table[2] = comm_in
+    input_table[3] = prev_hid
+    input_table[4] = prev_cell
+    if g_opts.comm == 'Gumbel' then
+        input_table[5] = Gumbel_noise
+    end
+
+    local output_table = {}
+    output_table[1] = comm_out
+    output_table[2] = hidstate
+    output_table[3] = cellstate
+
+
+    local model = nn.gModule( input_table, output_table)
     return model
 
 end
