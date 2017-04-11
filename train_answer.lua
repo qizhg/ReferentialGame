@@ -162,7 +162,7 @@ function train_answer(N)
                 --stat['reward' .. s] = stat['reward' .. s] / v
                 --stat['success' .. s] = stat['success' .. s] / v
                 --stat['active' .. s] = stat['active' .. s] / v
-                stat['avg_err' .. s] = stat['avg_err' .. s] / v
+                --stat['avg_err' .. s] = stat['avg_err' .. s] / v
             end
         end
 

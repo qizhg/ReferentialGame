@@ -109,7 +109,11 @@ function format_stat(stat)
     --str = str .. 'bl_cost: ' .. string.format("%2.4g",stat['bl_cost']) .. ' '
     --str = str .. 'reward: ' .. string.format("%2.4g",stat['reward']) .. ' '
     --str = str .. 'success: ' .. string.format("%2.4g",stat['success']) .. ' '
+    --str = str .. 'avg_action_err: ' .. string.format("%2.4g",stat['avg_action_err']) .. ' '
+    --str = str .. 'avg_comm_err: ' .. string.format("%2.4g",stat['avg_comm_err']) .. ' '
     str = str .. 'avg_err: ' .. string.format("%2.4g",stat['avg_err']) .. ' '
+    str = str .. 'pred: ' .. string.format("%2.4g",stat['pred']) .. ' '
+
     --str = str .. 'active: ' .. string.format("%2.4g",stat['active']) .. ' '
     str = str .. 'epoch: ' .. stat['epoch']
     return str

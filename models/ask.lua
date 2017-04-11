@@ -1,6 +1,7 @@
 require('nn')
 require('nngraph')
 paths.dofile('modules/LSTM.lua')
+paths.dofile('modules/GRU.lua')
 paths.dofile('modules/Gumbel.lua')
 
 local function nonlin()
@@ -21,7 +22,8 @@ function build_ask_model()
     ask_modules['referents'] = referents.data.module
 	local referents_sz = (1 + g_opts.num_distractors) * g_opts.inputsz
 	local referents_flat = nn.View(-1):setNumInputDims(2)(referents)
-	local referents_embedding = nonlin()(nn.Linear(referents_sz, g_opts.ask_hidsz)(referents_flat))
+	local referents_embedding1 = nonlin()(nn.Linear(referents_sz, g_opts.ask_hidsz)(referents_flat))
+    local referents_embedding = nonlin()(nn.Linear(g_opts.ask_hidsz, g_opts.ask_hidsz)(referents_embedding1))
 
 	local comm_in =  nn.Identity()() --(#batch, answer_num_symbols)
     ask_modules['comm_in'] = comm_in.data.module
@@ -46,7 +48,7 @@ function build_ask_model()
     local hid_symbol = nonlin()(nn.Linear(g_opts.ask_hidsz, g_opts.ask_hidsz)(hidstate))
     local symbol = nn.Linear(g_opts.ask_hidsz, g_opts.ask_num_symbols)(hid_symbol)
     if g_opts.comm == 'continuous' then 
-        comm_out = nn.SoftMax()(symbol)
+        comm_out = nn.LogSoftMax()(symbol)
     elseif g_opts.comm == 'Gumbel' then
         Gumbel_noise = nn.Identity()()
         local logp = nn.LogSoftMax()(symbol)
