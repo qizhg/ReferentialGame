@@ -28,8 +28,11 @@ end
 
 function build_preproc_code_model()
 	local code = nn.Identity()() --(#batch, 2 + #distractors, #attr)
-	local referents = nn.Narrow(2,1,1+g_opts.num_distractors)(code)
-	local target = nn.Squeeze()(nn.Narrow(2,2+g_opts.num_distractors,1)(code))
+	local code_2D = nn.View(-1,g_opts.num_attr)(code)
+	local code_2D_embedding = nn.LookupTable(g_opts.attr_range, g_opts.inputsz)(code_2D)
+	local code_embedding = nn.View(g_opts.batch_size,2+g_opts.num_distractors,-1)(code_2D_embedding)
+	local referents = nn.Narrow(2,1,1+g_opts.num_distractors)(code_embedding)
+	local target = nn.Squeeze()(nn.Narrow(2,2+g_opts.num_distractors,1)(code_embedding))
 
 	local model = nn.gModule( {code}, {referents, target})
     return model

@@ -20,14 +20,14 @@ function build_ask_model()
 	local referents = nn.Identity()() --(#batch, 1 + num_distractors, inputsz)
     ask_modules['referents'] = referents.data.module
 	local referents_sz = (1 + g_opts.num_distractors) * g_opts.inputsz
-	local referents_flat = nn.View(referents_sz):setNumInputDims(2)(referents)
+	local referents_flat = nn.View(-1):setNumInputDims(2)(referents)
 	local referents_embedding = nonlin()(nn.Linear(referents_sz, g_opts.ask_hidsz)(referents_flat))
 
 	local comm_in =  nn.Identity()() --(#batch, answer_num_symbols)
     ask_modules['comm_in'] = comm_in.data.module
-	local answer_embedding = nonlin()(nn.Linear(g_opts.answer_num_symbols, g_opts.ask_hidsz)(comm_in))
+	local comm_in_embedding = nonlin()(nn.Linear(g_opts.answer_num_symbols, g_opts.ask_hidsz)(comm_in))
 
-	local lstm_input = nn.CAddTable()({ referents_embedding,  answer_embedding })
+	local lstm_input = nn.CAddTable()({ referents_embedding,  comm_in_embedding })
 	local prev_hid = nn.Identity()() --(#batch, ask_hidsz)
     ask_modules['prev_hid'] = prev_hid.data.module
     local prev_cell = nn.Identity()() --(#batch, ask_hidsz)

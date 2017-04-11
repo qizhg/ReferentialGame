@@ -78,23 +78,23 @@ function train_batch(task_id)
 
         --comm_mask
         comm_mask[t] = action[t]:eq(2 + g_opts.num_distractors):float():clone()
-
+        
         --answer
         answer.comm_in[t] = ask.comm_out[t]:cmul(comm_mask[t]:expandAs(ask.comm_out[t]))
         local answer_input_table = {}
         answer_input_table[1] = answer.target
         answer_input_table[#answer_input_table+1] = answer.comm_in[t]
-        answer_input_table[#answer_input_table+1] = answer.hid[t-1]
-        answer_input_table[#answer_input_table+1] = answer.cell[t-1]
+        --answer_input_table[#answer_input_table+1] = answer.hid[t-1]
+        --answer_input_table[#answer_input_table+1] = answer.cell[t-1]
         if g_opts.comm == 'Gumbel' then
             answer.Gumbel_noise[t] = torch.rand(#batch, g_opts.answer_num_symbols):log():neg():log():neg()
             answer_input_table[#answer_input_table+1]  = answer.Gumbel_noise[t] 
         end
         local answer_out = answer_model:forward(answer_input_table)
         ----  answer_out =  {comm_out, hidstate, cellstate}
-        answer.comm_out[t] = answer_out[1]:clone()
-        answer.hid[t] = answer_out[2]:clone()
-        answer.cell[t] = answer_out[3]:clone()
+        answer.comm_out[t] = answer_out:clone()
+        --answer.hid[t] = answer_out[2]:clone()
+        --answer.cell[t] = answer_out[3]:clone()
 
         batch_act(batch, action[t], active[t])
         reward[t] = batch_reward(batch, active[t])
@@ -133,6 +133,7 @@ function train_batch(task_id)
     answer.grad_comm_out = torch.Tensor(#batch, g_opts.answer_num_symbols):fill(0)
 
     local reward_sum = torch.Tensor(#batch):zero() --running reward sum
+    local avg_err = 0
     for t = g_opts.max_steps, 1, -1 do
         reward_sum:add(reward[t])
 
@@ -140,17 +141,19 @@ function train_batch(task_id)
         local answer_input_table = {}
         answer_input_table[1] = answer.target
         answer_input_table[#answer_input_table+1] = answer.comm_in[t]
-        answer_input_table[#answer_input_table+1] = answer.hid[t-1]
-        answer_input_table[#answer_input_table+1] = answer.cell[t-1]
+        --answer_input_table[#answer_input_table+1] = answer.hid[t-1]
+        --answer_input_table[#answer_input_table+1] = answer.cell[t-1]
         if g_opts.comm == 'Gumbel' then
             answer_input_table[#answer_input_table+1]  = answer.Gumbel_noise[t] 
         end
         local answer_out =  answer_model:forward(answer_input_table)
+        --answer_model:backward(answer_input_table, 
+        --                    {answer.grad_comm_out, answer.grad_hid, answer.grad_cell})
         answer_model:backward(answer_input_table, 
-                            {answer.grad_comm_out, answer.grad_hid, answer.grad_cell})
+                              answer.grad_comm_out)
         answer.grad_target = answer_modules['target'].gradInput:clone() --(#batch, inputsz)
-        answer.grad_hid = answer_modules['prev_hid'].gradInput:clone()
-        answer.grad_cell = answer_modules['prev_cell'].gradInput:clone()
+        --answer.grad_hid = answer_modules['prev_hid'].gradInput:clone()
+        --answer.grad_cell = answer_modules['prev_cell'].gradInput:clone()
         answer.grad_comm_in = answer_modules['comm_in'].gradInput:clone()
 
         --comm
@@ -189,6 +192,7 @@ function train_batch(task_id)
         entropy_grad:cmul(active[t]:view(-1,1):expandAs(entropy_grad):clone())
         ask.grad_action:add(entropy_grad) --:div(#batch)
         if g_opts.SL == true then
+            ask.grad_baseline:zero()
             ask.grad_action:zero()
             local NLLceriterion = nn.ClassNLLCriterion()
             local action_label = torch.LongTensor(#batch)
@@ -198,9 +202,8 @@ function train_batch(task_id)
                 action_label = batch_target_index(batch):clone()
             end
             local err = NLLceriterion:forward(ask_out[2],action_label)
+            avg_err = avg_err + err
             ask.grad_action = NLLceriterion:backward(ask_out[2],action_label)
-            
-
         end
        
 
@@ -224,6 +227,8 @@ function train_batch(task_id)
     stat.reward = reward_sum:sum()
     stat.success = success:sum()
     stat.count = g_opts.batch_size
+    stat.avg_err = avg_err
+    --stat.active = active[2]:sum()
     return stat
 
 end
@@ -254,6 +259,8 @@ function train(N)
                 local s = string.sub(k, 6)
                 stat['reward' .. s] = stat['reward' .. s] / v
                 stat['success' .. s] = stat['success' .. s] / v
+                --stat['active' .. s] = stat['active' .. s] / v
+                --stat['avg_err' .. s] = stat['avg_err' .. s] / v
             end
         end
 
