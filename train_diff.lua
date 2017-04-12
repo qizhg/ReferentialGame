@@ -16,7 +16,7 @@ function train_batch_diff()
     local hid = {} 
     local cell = {}
     hid[0] = torch.Tensor(#batch, g_opts.ask_hidsz):fill(0)
-    cell[0] = torch.Tensor(#batch, g_opts.ask_hidsz):fill(0)
+    cell[0] = torch.Tensor(#batch, g_opts.ask_hidsz):fill(0.01)
     --forward
     local preproc_out = preproc_model:forward(ref_input)
     ----  preproc_out = {referents, target}
@@ -25,10 +25,10 @@ function train_batch_diff()
 
     local input_table = {}
     input_table[1] = preproc_out[1]
-    --input_table[#input_table+1] = hid[0]
+    input_table[#input_table+1] = hid[0]
     --input_table[#input_table+1] = cell[0]
-    local diff_out = diff_model:forward(preproc_out[1])
-    local test = sample_multinomial(torch.exp(diff_out))
+    local diff_out = diff_model:forward(input_table)
+    local test = sample_multinomial(torch.exp(diff_out[1]))
     local ct = test:squeeze():eq(ask_label:long())
 
     --backward pass
@@ -38,10 +38,10 @@ function train_batch_diff()
     grad_hid = torch.Tensor(#batch, g_opts.ask_hidsz):fill(0)
     grad_cell = torch.Tensor(#batch, g_opts.ask_hidsz):fill(0)
     local NLLceriterion = nn.ClassNLLCriterion()
-    local err = NLLceriterion:forward(diff_out,ask_label)
-    local grad_comm = NLLceriterion:backward(diff_out,ask_label):clone()
-    diff_model:backward(preproc_out[1],grad_comm )
-    --diff_model:backward(input_table,{grad_comm,grad_hid} )
+    local err = NLLceriterion:forward(diff_out[1],ask_label)
+    local grad_comm = NLLceriterion:backward(diff_out[1],ask_label):clone()
+    --diff_model:backward(preproc_out[1],grad_comm )
+    diff_model:backward(input_table,{grad_comm,grad_hid} )
     --diff_model:backward(input_table,{grad_comm,grad_hid,grad_cell} )
     
     grad_referents = diff_modules['referents'].gradInput:clone()
@@ -62,7 +62,7 @@ end
 function train_diff(N)
     for n = 1, N do
         epoch_num= n
-        local x = answer_paramx:clone()
+        local x = diff_paramx:clone()
         local stat = {} --for the epoch
 		for k = 1, g_opts.nbatches do
             batch_num = k
@@ -74,8 +74,8 @@ function train_diff(N)
         g_update_param(diff_paramx, diff_paramdx, 'diff')
         g_update_param(preproc_paramx, preproc_paramdx, 'preproc')
         
-        local xx = answer_paramx:clone()
-        --print((x-xx):norm())
+        local xx = diff_paramx:clone()
+        print((x-xx):norm())
 
         for k, v in pairs(stat) do
             if string.sub(k, 1, 5) == 'count' then

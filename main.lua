@@ -29,11 +29,11 @@ cmd:option('--nchannels', 3, '')
 cmd:option('--src_height', 32, '')
 cmd:option('--src_width', 32, '')
 
-cmd:option('--nonlin', 'relu', 'relu | tanh | none')
+cmd:option('--nonlin', 'tanh', 'relu | tanh | none')
 cmd:option('--answer_hidsz', 64, '')
 cmd:option('--answer_num_symbols', 3, '')
 cmd:option('--ask_num_symbols', 3, '')
-cmd:option('--ask_hidsz', 128, '')
+cmd:option('--ask_hidsz', 256, '')
 
 --input representation
 cmd:option('--representation', 'image', 'code|image')
@@ -47,13 +47,13 @@ cmd:option('--Gumbel_temp', 1.0, 'fixed Gumbel_temp')
 cmd:option('--SL', true, '')
 ---------
 cmd:option('--epochs', 100, 'the number of training epochs')
-cmd:option('--nbatches', 500, 'the number of mini-batches in one epoch')
+cmd:option('--nbatches',100, 'the number of mini-batches in one epoch')
 cmd:option('--batch_size', 32, 'size of mini-batch (the number of parallel games) in each thread')
 ---- GAE
 cmd:option('--gamma', 1.0, 'size of mini-batch (the number of parallel games) in each thread')
 cmd:option('--lambda', 1.0, 'size of mini-batch (the number of parallel games) in each thread')
 ---- lr
-cmd:option('--lrate', 1e-3, 'learning rate')
+cmd:option('--lrate', 2.5e-5, 'learning rate')
 
 ---- baseline mixing
 cmd:option('--alpha', 0.03, 'coefficient of baseline term in the cost function')
